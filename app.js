@@ -53,17 +53,33 @@ async function transfer(address, amount) {
     });
 }
 
+// To check Address's validity
+app.get('/validate/:address', async (req, res) => {
+    try {
+        const valid = web3.utils.isAddress(req.params.address);
+        res.status(200).send({
+            valid: valid,
+            error: null,
+        })
+    } catch (e) {
+        res.status(400).send({
+            valid: false,
+            error: e.code,
+        })
+    }
+
+})
+
 
 // To check user's balance
 app.get('/:address', async (req, res) => {
     try {
         const balance = await readBalance(req.params.address);
         const balanceInEth = BigNumber(balance).divide(1000000000000000000).toString();
-        console.log("****************")
-        res.status(202).send({
+        res.status(200).send({
             valid: true,
             balance: balanceInEth,
-            error: ""
+            error: null
         });
     } catch (e) {
         console.log(e.code);
@@ -78,8 +94,6 @@ app.get('/:address', async (req, res) => {
 
 // To send Tokens to user
 app.post('/giftTokens', async (req, res) => {
-
-
     const address = req.body.address;
     var amount = req.body.amount;
     var keySent = req.body.key;

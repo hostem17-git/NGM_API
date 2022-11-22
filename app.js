@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const assets = require('./constract.json')
 
 var BigNumber = require('big-number');
@@ -6,6 +7,7 @@ var BigNumber = require('big-number');
 const API_URL = process.env.API_URL;
 const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const Key = process.env.KEY
 
 
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
@@ -22,13 +24,13 @@ async function readBalance(address) {
     const balance = await contract.methods.balanceOf(address).call();
     console.log(balance.toString());
     return balance.toString();
+
 }
 
 async function transfer(address, amount) {
     const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest'); //get latest nonce
     const gasEstimate = await contract.methods.sendTokens(address, amount).estimateGas({ 'from': PUBLIC_KEY }); // estimate gas
     // Create the transaction
-    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@222")
     const tx = {
         'from': PUBLIC_KEY,
         'to': assets.address,
@@ -50,37 +52,53 @@ async function transfer(address, amount) {
         console.log("Promise failed:", err);
     });
 }
+
+
 // To check user's balance
 app.get('/:address', async (req, res) => {
-    const balance = await readBalance(req.params.address);
-    res.send(balance);
+    try {
+        const balance = await readBalance(req.params.address);
+        const balanceInEth = BigNumber(balance).divide(1000000000000000000).toString();
+        console.log("****************")
+        res.status(202).send({
+            valid: true,
+            balance: balanceInEth,
+            error: ""
+        });
+    } catch (e) {
+        console.log(e.code);
+        res.status(400).send({
+            valid: false,
+            balance: 0,
+            error: e.code,
+        })
+    }
+
 });
 
 // To send Tokens to user
 app.post('/giftTokens', async (req, res) => {
 
-    console.log("*************************************")
+
     const address = req.body.address;
     var amount = req.body.amount;
-    var amountInWei = BigNumber(amount).multiply(1000000000000000000).toString();
+    var keySent = req.body.key;
 
-    console.log(req.body)
-    console.log(address)
-    console.log(amount);
-    console.log(amountInWei)
-    console.log("####################################################")
+    if (keySent != Key) {
+        console.log(keySent);
+        console.log(Key);
 
-    await transfer(address, amountInWei);
+        res.sendStatus(401).send("Unauthorised");
+    } else {
+        var amountInWei = BigNumber(amount).multiply(1000000000000000000).toString();
 
-    res.sendStatus(200).send(amount);
+        await transfer(address, amountInWei);
+
+        res.sendStatus(200).send(amount);
+    }
+
+
 })
-
-
-app.post('/mintMore', (req, res) => {
-
-
-})
-
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`port${port} `));

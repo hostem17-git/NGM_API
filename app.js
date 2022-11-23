@@ -25,6 +25,32 @@ async function readBalance(address) {
     return balance.toString();
 }
 
+
+async function transfer(address, amount) {
+
+
+    const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest'); //get latest nonce
+    const gasEstimate = await contract.methods.sendTokens(address, amount).estimateGas({ 'from': PUBLIC_KEY }); // estimate gas
+    // Create the transaction
+    const tx = {
+        'from': PUBLIC_KEY,
+        'to': assets.address,
+        'nonce': nonce,
+        'gas': gasEstimate,
+        'data': contract.methods.sendTokens(address, amount).encodeABI()
+    };
+
+
+    const signTx = await web3.eth.accounts.signTransaction(tx, PRIVATE_KEY);
+
+    await web3.eth.sendSignedTransaction(signTx.rawTransaction);
+
+
+
+}
+
+
+
 // To check Address's validity
 app.get('/validate/:address', async (req, res) => {
     try {
@@ -44,7 +70,8 @@ app.get('/validate/:address', async (req, res) => {
 
 
 // To check user's balance
-app.get('/:address', async (req, res) => {
+app.get('/getBalance/:address', async (req, res) => {
+
     try {
         const balance = await readBalance(req.params.address);
         const balanceInEth = BigNumber(balance).divide(1000000000000000000).toString();
@@ -65,6 +92,8 @@ app.get('/:address', async (req, res) => {
 
 // To send Tokens to user
 app.post('/giftTokens', async (req, res) => {
+
+
     const address = req.body.address;
     var amount = req.body.amount;
     var keySent = req.body.key;
@@ -89,12 +118,11 @@ app.post('/giftTokens', async (req, res) => {
         });
     }
     else {
-
         var amountInWei = BigNumber(amount).multiply(1000000000000000000).toString();
-
         const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest'); //get latest nonce
         const gasEstimate = await contract.methods.sendTokens(address, amount).estimateGas({ 'from': PUBLIC_KEY }); // estimate gas
-
+        console.log("Gas Estimate", gasEstimate)
+        console.log(typeof (gasEstimate));
         const tx = {
             'from': PUBLIC_KEY,
             'to': assets.address,
@@ -103,24 +131,26 @@ app.post('/giftTokens', async (req, res) => {
             'data': contract.methods.sendTokens(address, amountInWei).encodeABI()
         };
 
-        const signPromise = web3.eth.accounts.signTransaction(tx, PRIVATE_KEY);
+        try {
 
-        signPromise.then(async (signedTx) => {
-            await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            const signTx = await web3.eth.accounts.signTransaction(tx, PRIVATE_KEY);
+            await web3.eth.sendSignedTransaction(signTx.rawTransaction);
 
             res.status(200).send({
-                amount: amount,
-                error: null,
-            });
+                amount: 200,
+                error: null
+            })
+        } catch (e) {
 
+            res.status(503).send(
+                {
+                    amount: 0,
+                    error: "insufficient funds for gas"
+                }
+            )
 
-        }).catch((err) => {
-            res.status(503).send({
-                amount: amount,
-                error: "insufficient funds for gas"
-            });
+        }
 
-        });
     }
 })
 

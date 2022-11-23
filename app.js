@@ -119,10 +119,10 @@ app.post('/giftTokens', async (req, res) => {
     }
     else {
         var amountInWei = BigNumber(amount).multiply(1000000000000000000).toString();
+
         const nonce = await web3.eth.getTransactionCount(PUBLIC_KEY, 'latest'); //get latest nonce
-        const gasEstimate = await contract.methods.sendTokens(address, amount).estimateGas({ 'from': PUBLIC_KEY }); // estimate gas
-        console.log("Gas Estimate", gasEstimate)
-        console.log(typeof (gasEstimate));
+        const gasEstimate = await contract.methods.sendTokens(address, amountInWei).estimateGas({ 'from': PUBLIC_KEY }); // estimate gas
+
         const tx = {
             'from': PUBLIC_KEY,
             'to': assets.address,
